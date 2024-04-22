@@ -1,0 +1,27 @@
+from sqlmodel import create_engine, Session
+from typing import Optional, AsyncGenerator
+from exceptions.env_exceptions import EnvironmentNotFound
+import os
+
+url: Optional[str] = os.getenv("DB_URL")
+
+# check if there is an environtment variable as this
+if url:
+    # create the engine
+    engine = create_engine(
+        url=url,
+        connect_args={"check_same_thread": False},
+        echo=True
+    )
+else:
+    raise EnvironmentNotFound("DB_URL")
+
+# create the get session to connect to the database
+async def get_session() -> AsyncGenerator:
+    """Creates the session which will be use through out the entire database
+
+    Yields:
+        Session(egine): yield the session upon every run
+    """    
+    with Session(engine) as session:
+        yield session
