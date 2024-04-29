@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session, select, cast, String, column
 from db import get_session
 from entities.user_entity import User, UserInput, UserOutput, UserFilter
-from dto.response import Response
+from dto.response import Response, SingleResponse
 from datetime import datetime
 from enums.enums import SuccessMessage, ErrorMessage
-from utils.utils import Utils
+from utils.user_utils import Utils
 from typing import Optional, Sequence
 import os
 from exceptions.env_exceptions import EnvironmentNotFound
@@ -430,3 +430,5 @@ class UserRouter(APIRouter):
             raise EnvironmentNotFound("RESET_PASSWORD")
         
         return response
+    
+    

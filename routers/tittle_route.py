@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends
 from entities.title_entity import Title, TitleInput, TitleOutput
+from entities.auth_entity.token_Entity import TokenData
 from db import get_session
 from sqlmodel import Session, select, column
-from dto.response import Response
-from typing import Optional, Sequence, List
+from dto.response import Response, SingleResponse
+from typing import Optional, Sequence, List, Annotated
 from enums.enums import SuccessMessage, ErrorMessage
+from routers.auth_route import AuthRouter, get_current_active_user
 from datetime import datetime
 
 
@@ -25,7 +27,9 @@ class TitleRouter(APIRouter):
         self.add_api_route(path="/deletetitle/{id}", methods=[
                            "DELETE"], endpoint=self.remove_title, response_model=Response[TitleOutput])
 
-    async def get_titles(self, name: Optional[str] = None, session: Session = Depends(get_session)) -> Response[Title]:
+    async def get_titles(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                         name: Optional[str] = None, 
+                         session: Session = Depends(get_session)) -> Response[Title]:
         """Get All titles in the church
 
         Args:
@@ -56,7 +60,9 @@ class TitleRouter(APIRouter):
 
         return response
 
-    async def get_title_id(self, title_id: int, session: Session = Depends(get_session)) -> Response[Title]:
+    async def get_title_id(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                           title_id: int, 
+                           session: Session = Depends(get_session)) -> Response[Title]:
         """get title by ID
 
         Args:
@@ -85,7 +91,9 @@ class TitleRouter(APIRouter):
             )
         return response
 
-    async def add_title(self, car: TitleInput, session: Session = Depends(get_session)) -> Response[Title]:
+    async def add_title(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                        car: TitleInput, 
+                        session: Session = Depends(get_session)) -> Response[Title]:
         """Add new title to the table
 
         Args:
@@ -112,7 +120,10 @@ class TitleRouter(APIRouter):
 
         return response
 
-    async def change_title(self, id: int, new_title: TitleInput, session: Session = Depends(get_session)) -> Response[Title]:
+    async def change_title(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                           id: int, 
+                           new_title: TitleInput, 
+                           session: Session = Depends(get_session)) -> Response[Title]:
         """Update title
 
         Args:
@@ -146,7 +157,9 @@ class TitleRouter(APIRouter):
             )
         return response
 
-    async def remove_title(self, id: int, session: Session = Depends(get_session)) -> Response[Title]:
+    async def remove_title(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                           id: int, 
+                           session: Session = Depends(get_session)) -> Response[Title]:
         """Remove a title
 
         Args:

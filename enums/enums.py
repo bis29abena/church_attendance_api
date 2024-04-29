@@ -25,6 +25,7 @@ class SuccessMessage(Enum):
     OperationSuccessful = "Operation Successful"
     TitleAdded = "Title Added Successfully"
     TitleRemoved = "Title Removed Successfully"
+    UserFound = "User Found"
     UserUpdated = "User updated/changed Successfully"
     UserRemoved = "User has been deleted"
     UserDisabled = "User Disabled Successfully"

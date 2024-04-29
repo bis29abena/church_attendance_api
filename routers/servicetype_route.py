@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, Annotated
 from sqlmodel import Session, select, cast, String, column
 from db import get_session
 from typing import Optional
 from enums.enums import SuccessMessage, ErrorMessage
-from dto.response import Response
+from dto.response import Response, SingleResponse
 from entities.service_type_enity import ServiceType, ServiceTypeInput, ServiceTypeUser
 from entities.user_entity import User
+from entities.auth_entity.token_Entity import TokenData
+from routers.auth_route import AuthRouter, get_current_active_user
 from datetime import datetime
 
 
@@ -27,7 +29,9 @@ class ServiceTypeRouter(APIRouter):
         self.add_api_route("/deleteservicetype", methods=[
                            "DELETE"], endpoint=self.remove_servicetype, response_model=Response[ServiceType])
 
-    async def get_serivcetypes(self, name: Optional[str] = None, session: Session = Depends(get_session)) -> Response[ServiceTypeUser]:
+    async def get_serivcetypes(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                               name: Optional[str] = None, 
+                               session: Session = Depends(get_session)) -> Response[ServiceTypeUser]:
         """get all services
 
         Args:
@@ -74,7 +78,9 @@ class ServiceTypeRouter(APIRouter):
 
         return response
 
-    async def get_servicetypeby_id(self, id: int, session: Session = Depends(get_session)) -> Response[ServiceTypeUser]:
+    async def get_servicetypeby_id(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                                   id: int, 
+                                   session: Session = Depends(get_session)) -> Response[ServiceTypeUser]:
         """get service type by id
 
         Args:
@@ -118,7 +124,9 @@ class ServiceTypeRouter(APIRouter):
 
         return response
 
-    async def add_servicetype(self, serviceData: ServiceTypeInput, session: Session = Depends(get_session)) -> Response[ServiceType]:
+    async def add_servicetype(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                              serviceData: ServiceTypeInput, 
+                              session: Session = Depends(get_session)) -> Response[ServiceType]:
         """Add a service type
 
         Args:
@@ -146,13 +154,12 @@ class ServiceTypeRouter(APIRouter):
 
             return response
 
-        user: Optional[User] = session.get(User, serviceData.createdby)
         servicetype = ServiceType.from_orm(serviceData)
 
         if servicetype:
             
-            if user:
-                user.servicetypes.append(servicetype)
+            if current_user.success and current_user.data and current_user.data.id:
+                servicetype.createdby = current_user.data.id
                 
             session.add(servicetype)
             session.commit()
@@ -173,7 +180,10 @@ class ServiceTypeRouter(APIRouter):
 
         return response
 
-    async def change_servicetype(self, id: int, new_serviceType: ServiceTypeInput, sesion: Session = Depends(get_session)) -> Response[ServiceType]:
+    async def change_servicetype(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                                 id: int, 
+                                 new_serviceType: ServiceTypeInput, 
+                                 sesion: Session = Depends(get_session)) -> Response[ServiceType]:
         """update response type
 
         Args:
@@ -199,27 +209,30 @@ class ServiceTypeRouter(APIRouter):
 
         old_data: Optional[ServiceType] = sesion.get(ServiceType, id)
 
-        if old_data:
-            old_data.name = new_serviceType.name
-            old_data.modifiedby = new_serviceType.createdby
-            old_data.modifiedon = datetime.utcnow()
+        if current_user.success and current_user.data:
+            if old_data:
+                old_data.name = new_serviceType.name
+                old_data.modifiedby = current_user.data.id
+                old_data.modifiedon = datetime.utcnow()
 
-            sesion.add(old_data)
-            sesion.commit()
-            sesion.refresh(old_data)
+                sesion.add(old_data)
+                sesion.commit()
+                sesion.refresh(old_data)
 
-            response = Response(
-                success = True,
-                message = SuccessMessage.OperationSuccessful.value,
-                data = old_data
-            )
-           
-        else:
-            response = Response(success=False, message=ErrorMessage.NoEntry.value, data=old_data)
+                response = Response(
+                    success = True,
+                    message = SuccessMessage.OperationSuccessful.value,
+                    data = old_data
+                )
+            
+            else:
+                response = Response(success=False, message=ErrorMessage.NoEntry.value, data=old_data)
 
         return response
 
-    async def remove_servicetype(self, id: int, session: Session = Depends(get_session)) -> Response[ServiceType]:
+    async def remove_servicetype(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                                 id: int, 
+                                 session: Session = Depends(get_session)) -> Response[ServiceType]:
         """delete a service type
 
         Args:

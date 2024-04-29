@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends
-from typing import List, Tuple, Optional, Sequence
+from typing import List, Tuple, Optional, Sequence, Annotated
 from sqlmodel import Session, select, cast, String, column, join
 from db import get_session
-from dto.response import Response
+from dto.response import Response, SingleResponse
 from datetime import date, time, datetime
 from entities.service_entity import Service, ServiceAndServiceTypeAndUserOutput, ServiceInput, ServiceOutput
 from entities.service_type_enity import ServiceType
 from entities.user_entity import User
+from entities.auth_entity.token_Entity import TokenData
 from enums.enums import SuccessMessage, ErrorMessage
+from routers.auth_route import AuthRouter, get_current_active_user
 
 
 
@@ -23,7 +25,8 @@ class ServiceRoute(APIRouter):
         self.add_api_route(path="/updateservice/{id}", endpoint=self.update_service,methods=["PUT"], response_model=Response[ServiceOutput])
         self.add_api_route(path="/deleteservice/{id}", endpoint=self.delete_service, methods=["DELETE"], response_model=Response[Service])
         
-    async def get_services(self, servicetypeid: Optional[int] = None, location: Optional[str] = None, date_event: Optional[date] = None,
+    async def get_services(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                           servicetypeid: Optional[int] = None, location: Optional[str] = None, date_event: Optional[date] = None,
                            time_start: Optional[time] = None, session: Session = Depends(get_session)) -> Response[ServiceAndServiceTypeAndUserOutput]:
         """_summary_
 
@@ -88,7 +91,9 @@ class ServiceRoute(APIRouter):
             
         return response
     
-    async def get_service_byId(self, id: int, session: Session = Depends(get_session)) -> Response[ServiceAndServiceTypeAndUserOutput]:
+    async def get_service_byId(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                               id: int, 
+                               session: Session = Depends(get_session)) -> Response[ServiceAndServiceTypeAndUserOutput]:
         """get service by id
 
         Args:
@@ -137,7 +142,9 @@ class ServiceRoute(APIRouter):
         
         return response
     
-    async def add_service(self, service: ServiceInput, session: Session = Depends(get_session)) -> Response[Service]:
+    async def add_service(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                          service: ServiceInput, 
+                          session: Session = Depends(get_session)) -> Response[Service]:
         """add a service
 
         Args:
@@ -150,16 +157,13 @@ class ServiceRoute(APIRouter):
         
         response: Response[Service] 
         
-        # get the user
-        user: Optional[User] = session.get(User, service.createdby)
-        
         added_service: Service = Service.from_orm(service)
         
         if added_service:
             
             # check if there is a user
-            if user is not None:
-                user.services.append(added_service)
+            if current_user.success and current_user.data and current_user.data.id:
+                added_service.createdby = current_user.data.id
                 
             session.add(added_service)
             session.commit()
@@ -180,7 +184,9 @@ class ServiceRoute(APIRouter):
         
         return response
     
-    async def update_service(self, id: int, service: ServiceInput, session: Session = Depends(get_session)) -> Response[Service]:
+    async def update_service(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                             id: int, 
+                             service: ServiceInput, session: Session = Depends(get_session)) -> Response[Service]:
         """Update a service
 
         Args:
@@ -196,41 +202,44 @@ class ServiceRoute(APIRouter):
         
         old_service: Optional[Service] = session.get(Service, id)
         
-        if old_service:
-            
-            if service.servicetypeId:
-                old_service.servicetypeId = service.servicetypeId
+        if current_user.success and current_user.data:
+            if old_service:
                 
-            if service.location:
-                old_service.location = service.location
+                if service.servicetypeId:
+                    old_service.servicetypeId = service.servicetypeId
+                    
+                if service.location:
+                    old_service.location = service.location
+                    
+                if service.date_event:
+                    old_service.date_event = service.date_event
                 
-            if service.date_event:
-                old_service.date_event = service.date_event
+                if service.time_start:
+                    old_service.time_start = service.time_start
+                
+                old_service.modifiedby = current_user.data.id
+                old_service.modifiedon = datetime.utcnow()
+                
+                session.add(old_service)
+                session.commit()
+                session.refresh(old_service)
+                
+                response = Response(
+                    success = True,
+                    message = SuccessMessage.OperationSuccessful.value,
+                    data = old_service
+                )
             
-            if service.time_start:
-                old_service.time_start = service.time_start
-            
-            old_service.modifiedby = service.createdby
-            old_service.modifiedon = datetime.utcnow()
-            
-            session.add(old_service)
-            session.commit()
-            session.refresh(old_service)
-            
-            response = Response(
-                success = True,
-                message = SuccessMessage.OperationSuccessful.value,
-                data = old_service
-            )
-           
-        else:
-            response.success = False
-            response.message = ErrorMessage.NoEntry.value
-            response.data = old_service
+            else:
+                response.success = False
+                response.message = ErrorMessage.NoEntry.value
+                response.data = old_service
             
         return response
     
-    async def delete_service(self, id: int, session: Session = Depends(get_session)) -> Response[Service]:
+    async def delete_service(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                             id: int, 
+                             session: Session = Depends(get_session)) -> Response[Service]:
         """delete a service
 
         Args:

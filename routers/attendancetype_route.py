@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends
 from entities.attendance_type_entity import AttendanceType, AttendanceTypeInput, AttendanceTypeOutput, AttendanceTypeUser
 from entities.user_entity import User
+from entities.auth_entity.token_Entity import TokenData
 from db import get_session
 from sqlmodel import Session, select, cast, String, column
-from dto.response import Response
-from typing import Optional, Sequence
+from dto.response import Response, SingleResponse
+from typing import Optional, Sequence, Annotated
 from enums.enums import SuccessMessage, ErrorMessage
 from datetime import datetime
+from routers.auth_route import AuthRouter, get_current_active_user
 
 
 class AttendancetypeRouter(APIRouter):
@@ -26,7 +28,10 @@ class AttendancetypeRouter(APIRouter):
         self.add_api_route(path="/deleteattendancetype/{id}", methods=[
                            "DELETE"], endpoint=self.remove_attendacetype, response_model=Response[AttendanceTypeOutput])
 
-    async def get_attendancetypes(self, name: Optional[str] = None, session: Session = Depends(get_session)) -> Response[AttendanceTypeUser]:
+    async def get_attendancetypes(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                                  name: Optional[str] = None, 
+                                  session: Session = Depends(get_session),
+                                  ) -> Response[AttendanceTypeUser]:
         """Get All attendance type in the church
 
         Args:
@@ -70,7 +75,9 @@ class AttendancetypeRouter(APIRouter):
 
         return response
 
-    async def get_attendanceType_id(self, id: int, session: Session = Depends(get_session)) -> Response[AttendanceType]:
+    async def get_attendanceType_id(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                                    id: int, 
+                                    session: Session = Depends(get_session)) -> Response[AttendanceType]:
         """get attendace by ID
 
         Args:
@@ -99,7 +106,9 @@ class AttendancetypeRouter(APIRouter):
             )
         return response
 
-    async def add_attendanceType(self, attendancetype: AttendanceTypeInput, session: Session = Depends(get_session)) -> Response[AttendanceType]:
+    async def add_attendanceType(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                                 attendancetype: AttendanceTypeInput, 
+                                 session: Session = Depends(get_session)) -> Response[AttendanceType]:
         """Add new attendanceType to the table
 
         Args:
@@ -123,13 +132,10 @@ class AttendancetypeRouter(APIRouter):
 
             return response
 
-        user: Optional[User] = session.get(User, attendancetype.createdby)
-
         new_attendanceType: AttendanceType = AttendanceType.from_orm(attendancetype)
         
-        # check if user is not
-        if user is not None:
-            user.attendancetypes.append(new_attendanceType)
+        if current_user.success and current_user.data and current_user.data.id:
+            new_attendanceType.createdby = current_user.data.id
             
         session.add(new_attendanceType)
         session.commit()
@@ -145,7 +151,10 @@ class AttendancetypeRouter(APIRouter):
 
         return response
 
-    async def change_attendancetype(self, id: int, new_attendanceType: AttendanceTypeInput, session: Session = Depends(get_session)) -> Response[AttendanceType]:
+    async def change_attendancetype(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                                    id: int, 
+                                    new_attendanceType: AttendanceTypeInput, 
+                                    session: Session = Depends(get_session)) -> Response[AttendanceType]:
         """Update AttendanceType
 
         Args:
@@ -171,29 +180,33 @@ class AttendancetypeRouter(APIRouter):
             return response
 
         old_attendanceType: Optional[AttendanceType] = session.get(AttendanceType, id)
+        
+        if current_user.success and current_user.data:
 
-        if old_attendanceType:
-            old_attendanceType.name = new_attendanceType.name
-            old_attendanceType.modifiedby = new_attendanceType.createdby
-            old_attendanceType.modifiedon = datetime.utcnow()
-            session.commit()
-            session.refresh(old_attendanceType)
+            if old_attendanceType:
+                old_attendanceType.name = new_attendanceType.name
+                old_attendanceType.modifiedby = current_user.data.id
+                old_attendanceType.modifiedon = datetime.utcnow()
+                session.commit()
+                session.refresh(old_attendanceType)
 
-            response = Response(
-                success=True,
-                message=SuccessMessage.OperationSuccessful.value,
-                data=old_attendanceType
-            )
-        else:
+                response = Response(
+                    success=True,
+                    message=SuccessMessage.OperationSuccessful.value,
+                    data=old_attendanceType
+                )
+            else:
 
-            response = Response(
-                success=False,
-                message=ErrorMessage.AttendanceTypeNotUpdated.value,
-                data=old_attendanceType
-            )
+                response = Response(
+                    success=False,
+                    message=ErrorMessage.AttendanceTypeNotUpdated.value,
+                    data=old_attendanceType
+                )
         return response
 
-    async def remove_attendacetype(self, id: int, session: Session = Depends(get_session)) -> Response[AttendanceType]:
+    async def remove_attendacetype(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                                   id: int, 
+                                   session: Session = Depends(get_session)) -> Response[AttendanceType]:
         """Remove an Attendance Type
 
         Args:
