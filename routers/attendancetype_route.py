@@ -8,7 +8,7 @@ from dto.response import Response, SingleResponse
 from typing import Optional, Sequence, Annotated
 from enums.enums import SuccessMessage, ErrorMessage
 from datetime import datetime
-from routers.auth_route import AuthRouter, get_current_active_user
+from routers.auth_route import  get_current_active_user
 
 
 class AttendancetypeRouter(APIRouter):

@@ -7,8 +7,13 @@ from datetime import datetime
 from enums.enums import SuccessMessage, ErrorMessage
 from utils.user_utils import Utils
 from typing import Optional, Sequence
-import os
 from exceptions.env_exceptions import EnvironmentNotFound
+from routers.auth_route import get_current_active_user
+from entities.auth_entity.token_Entity import TokenData
+from typing import Annotated
+
+import os
+
 
 
 class UserRouter(APIRouter):
@@ -33,7 +38,8 @@ class UserRouter(APIRouter):
         self.add_api_route("/reset_password/{id}", self.reset_password, methods=["PUT"],
                            response_model=Response[UserOutput])
 
-    async def get_users(self, firstname: Optional[str] = None, middlename: Optional[str] = None,
+    async def get_users(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                        firstname: Optional[str] = None, middlename: Optional[str] = None,
                         lastname: Optional[str] = None, emailaddress: Optional[str] = None,
                         phoneNumber: Optional[str] = None, session: Session = Depends(get_session)) -> Response[UserOutput]:
         """Get all Users
@@ -59,7 +65,11 @@ class UserRouter(APIRouter):
             query = query.where(User.emailaddress == emailaddress)
         if phoneNumber:
             query = query.where(User.phoneNumber == phoneNumber)
-
+        
+        # get all user except the one logged in
+        if current_user.success and current_user.data:
+            query = query.where(User.id != current_user.data.id)
+            
         result: Sequence[User] = session.exec(query.order_by(
             cast(User.createdon, String))).all()
 
@@ -78,7 +88,7 @@ class UserRouter(APIRouter):
                     modifiedon=user.modifiedon
                 )
                 
-                for user in result
+                for user in result 
             ]
             response = Response(
                 success=True,
@@ -94,7 +104,8 @@ class UserRouter(APIRouter):
 
         return response
 
-    async def add_user(self, user: UserInput, sesssion: Session = Depends(get_session)) -> Response[UserInput]:
+    async def add_user(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                       user: UserInput, sesssion: Session = Depends(get_session)) -> Response[UserInput]:
         """Add a new user to the table
 
         Args:
@@ -143,7 +154,8 @@ class UserRouter(APIRouter):
 
         return response
 
-    async def update_user(self, id: int, user: UserFilter, session: Session = Depends(get_session)) -> Response[UserOutput]:
+    async def update_user(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                          id: int, user: UserFilter, session: Session = Depends(get_session)) -> Response[UserOutput]:
         """Update user details
 
         Args:
@@ -224,7 +236,8 @@ class UserRouter(APIRouter):
             )
         return response
 
-    async def delete_user(self, id: int, sesssion: Session = Depends(get_session)) -> Response[UserOutput]:
+    async def delete_user(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                          id: int, sesssion: Session = Depends(get_session)) -> Response[UserOutput]:
         """A user to be deleted
 
         Args:
@@ -266,7 +279,8 @@ class UserRouter(APIRouter):
 
         return response
 
-    async def enable_disable_user(self, id: int, session: Session = Depends(get_session)) -> Response[UserOutput]:
+    async def enable_disable_user(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                                  id: int, session: Session = Depends(get_session)) -> Response[UserOutput]:
         """Enable or Disable a user
 
         Args:
@@ -317,7 +331,8 @@ class UserRouter(APIRouter):
             )
         return response
 
-    async def forgotten_password(self, email: str, new_password: str, session: Session = Depends(get_session)) -> Response[UserOutput]:
+    async def forgotten_password(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                                 email: str, new_password: str, session: Session = Depends(get_session)) -> Response[UserOutput]:
         """Reset user password
 
         Args:
@@ -339,6 +354,7 @@ class UserRouter(APIRouter):
                 )
 
                 return response
+            
 
         result: User = session.exec(select(User).where(
             User.emailaddress == email)).one()
@@ -375,7 +391,8 @@ class UserRouter(APIRouter):
             )
         return response
 
-    async def reset_password(self, id: int, session: Session = Depends(get_session)) -> Response[UserOutput]:
+    async def reset_password(self, current_user: Annotated[SingleResponse[TokenData], Depends(get_current_active_user)],
+                             id: int, session: Session = Depends(get_session)) -> Response[UserOutput]:
         """Reset the password of the user
 
         Args:

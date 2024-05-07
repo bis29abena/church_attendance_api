@@ -8,7 +8,7 @@ from dto.response import Response, SingleResponse
 from entities.service_type_enity import ServiceType, ServiceTypeInput, ServiceTypeUser
 from entities.user_entity import User
 from entities.auth_entity.token_Entity import TokenData
-from routers.auth_route import AuthRouter, get_current_active_user
+from routers.auth_route import get_current_active_user
 from datetime import datetime
 
 
