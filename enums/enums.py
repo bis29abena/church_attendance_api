@@ -19,6 +19,7 @@ class ErrorMessage(Enum):
     ServiceTypeExists = "Service Type already exist"
     ServiceTypeNotAdded = "Service Type was not added"
     ServiceNotAdded = "Service was not added"
+    MemberNotAdded = "Member was not added"
 
 
 class SuccessMessage(Enum):
@@ -34,4 +35,5 @@ class SuccessMessage(Enum):
     AttendanceTypeAdded = "Attendance Type was added succesfully"
     AttendanceTypeRemoved = "Attendance Type removed successfully"
     ServiceAdded = "Service Added Successfully"
+    MemberAdded = "Member Added Successfully"
     

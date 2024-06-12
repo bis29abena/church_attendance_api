@@ -168,16 +168,6 @@ class UserRouter(APIRouter):
         """
         response: Response[UserOutput]
 
-        if user.emailaddress:
-            if not self.__utils.verify_email(user.emailaddress):
-                response = Response(
-                    success=False,
-                    message=ErrorMessage.InvalidEmail.value,
-                    data=None
-                )
-
-                return response
-
         old_user: Optional[User] = session.get(User, id)
 
         if old_user:

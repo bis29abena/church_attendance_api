@@ -6,7 +6,7 @@ from sqlmodel import Session, select, column
 from dto.response import Response, SingleResponse
 from typing import Optional, Sequence, List, Annotated
 from enums.enums import SuccessMessage, ErrorMessage
-from routers.auth_route import AuthRouter, get_current_active_user
+from routers.auth_route import get_current_active_user
 from datetime import datetime
 
 

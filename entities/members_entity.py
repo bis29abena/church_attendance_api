@@ -2,6 +2,7 @@ from sqlmodel import Field, Column, VARCHAR, DateTime, SQLModel, Date, LargeBina
 from typing import Optional, TYPE_CHECKING
 from datetime import date, datetime
 from entities.attendance_entity import Attendance
+from pydantic import BaseModel, EmailStr
 
 if TYPE_CHECKING:
     from entities.user_entity import User
@@ -32,13 +33,25 @@ class MemberInput(SQLModel):
                 "emailaddress": "jane@gamil.com",
                 "phonenumber": "0244154585",
                 "dob": 2024/5/12,
-                "profile_picture": "mo;csaijcidsjiocjlasdcdcas247",
                 "house_address": "GPS-Address",
                 "title_id": 2
             }
         }
 
 
+class MemberInputData(BaseModel):
+    firstname: str
+    lastname: str
+    middlename: str
+    gender: str
+    emailaddress: EmailStr
+    phonenumber: str
+    dob: date
+    profile_picture: bytes
+    house_address: str
+    title_id: int
+    createdby: int 
+    
 class MemberOutput(MemberInput):
     id: int
 
@@ -46,7 +59,7 @@ class MemberOutput(MemberInput):
 class Member(MemberInput, table=True, ):
     id: Optional[int] = Field(default=None, primary_key=True)
     createdby: int = Field(foreign_key="user.id")
-    modifiedby: Optional[int]
+    modifiedby: Optional[int] = Field(default=None)
     createdon: datetime = Field(
         default_factory=datetime.utcnow, sa_column=Column("createdon", DateTime))
     modifiedon: Optional[datetime] = Field(

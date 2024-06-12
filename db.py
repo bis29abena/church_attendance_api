@@ -1,5 +1,5 @@
 from sqlmodel import create_engine, Session
-from typing import Optional
+from typing import Optional, AsyncGenerator
 from exceptions.env_exceptions import EnvironmentNotFound
 import os
 
@@ -17,7 +17,7 @@ else:
     raise EnvironmentNotFound("DB_URL")
 
 # create the get session to connect to the database
-def get_session() -> Session:
+async def get_session() -> AsyncGenerator:
     """Creates the session which will be use throughout the entire database
 
     Yields:
