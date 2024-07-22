@@ -152,7 +152,7 @@ class MembersRoute(APIRouter):
                     emailaddress = member.emailaddress,
                     phonenumber = member.phonenumber,
                     gender = member.gender,
-                    profile_picture = member.profile_picture,
+                    profile_picture = member.profile_picture if isinstance(member.profile_picture, bytes) else None ,
                     house_address = member.house_address,
                     dob = member.dob,
                     title_id = member.title_id,

@@ -1,8 +1,13 @@
 from sqlmodel import Field, Column, VARCHAR, DateTime, SQLModel, Date, LargeBinary, Relationship, CheckConstraint
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, AnyStr
 from datetime import date, datetime
 from entities.attendance_entity import Attendance
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
+from re import Pattern
+from PIL import Image
+from io import BytesIO
+
+import re
 
 if TYPE_CHECKING:
     from entities.user_entity import User
@@ -47,10 +52,46 @@ class MemberInputData(BaseModel):
     emailaddress: EmailStr
     phonenumber: str
     dob: date
-    profile_picture: bytes
+    profile_picture: Optional[bytes] = None
+    file_size: int = Field(..., gt=0)
     house_address: str
     title_id: int
     createdby: int 
+    
+    @field_validator("phonenumber")
+    def validate_phone_number(cls, value: str) -> str:
+        phone_regex: Pattern[AnyStr] = re.compile(r'^(0\d{9}|\+233\d{9})$')
+        
+        if not phone_regex.match(value):
+            raise ValueError("This is not a valid Ghanaian phone number")
+        
+        return value
+    
+    @field_validator("profile_picture")
+    def validate_profile_picture(cls,values: dict, value: bytes | None = None) -> bytes | None:
+        if not value:
+            return value
+        
+        try:
+            image = Image.open(BytesIO(value))
+            
+            image.verify() # check if is an image
+        except(IOError, SyntaxError, TypeError) as e:
+            raise ValueError("File provided is not an image") from e
+        
+        
+         # Calculate the file size
+        file_size: int = len(value)
+        values['file_size'] = file_size  # Assign the file size
+
+        # Check the file size if it's in a desired limit (example: less than 5MB)
+        max_file_size = 5 * 1024 * 1024  # 5MB in bytes
+        if file_size > max_file_size:
+            raise ValueError(f'File size exceeds the limit of {max_file_size} bytes')
+
+        return value
+        
+        
     
 class MemberOutput(MemberInput):
     id: int
